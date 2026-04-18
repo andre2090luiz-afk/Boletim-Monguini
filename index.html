@@ -566,7 +566,7 @@ async function fetchPg(idx, tipo) {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 1800,
         system: sys,
         messages: [{ role: 'user', content: usr }]
