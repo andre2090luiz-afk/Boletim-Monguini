@@ -559,119 +559,84 @@ async function buscarMercadoReal() {
   }
 }
 
-// ── RENDERIZA ÍNDICES COM DADOS REAIS ─────────────────────────────────────────
+// ── RENDERIZA ÍNDICES ──────────────────────────────────────────────────────────
 function renderIndicesReais() {
   const el = document.getElementById('p0');
-  const d = dadosMercado;
+  const d  = dadosMercado;
   const hoje = new Date().toLocaleDateString('pt-BR');
 
-  const badge = (real) => real
-    ? `<span style="font-size:9px;background:rgba(255,255,255,0.22);color:#fff;padding:2px 6px;border-radius:4px;margin-left:5px;font-weight:600">✓ REAL</span>`
-    : `<span style="font-size:9px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);padding:2px 6px;border-radius:4px;margin-left:5px">indisponível</span>`;
-
-  const badgeSm = (real) => real
-    ? `<span style="font-size:9px;background:#e8f5ec;color:#1b5e2f;padding:1px 5px;border-radius:3px;font-weight:600">✓ REAL</span>`
-    : `<span style="font-size:9px;background:#f5f5f5;color:#888;padding:1px 5px;border-radius:3px">—</span>`;
-
-  const varHtml = (sinal, varStr) => {
-    if (!varStr) return '';
-    const cor = sinal === 'up' ? '#4caf7d' : '#ff6b6b';
-    const arrow = sinal === 'up' ? '▲' : '▼';
-    return `<span style="font-size:12px;color:${cor};font-weight:500;margin-left:6px">${arrow} ${varStr}</span>`;
-  };
+  const badgeReal = `<span style="font-size:9px;background:rgba(255,255,255,0.22);color:#fff;padding:2px 7px;border-radius:4px;font-weight:600">✓ REAL</span>`;
 
   let h = `<p class="sec-label">Cotações reais — ${hoje}</p>`;
 
-  // DÓLAR — hero card
+  // DÓLAR — único indicador direto
   h += `<div class="ind-hero">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <div class="ind-hero-name">Dólar (PTAX)</div>
-      ${badge(!!d.dolar)}
+      ${d.dolar ? badgeReal : ''}
     </div>
-    <div style="display:flex;align-items:baseline;gap:6px">
-      <div class="ind-hero-val">${d.dolar || '—'}</div>
-    </div>
-    <div class="ind-hero-src">${d.dolarFonte || 'Banco Central do Brasil'} ${d.dolarData ? '· ' + d.dolarData : ''}</div>
-    <div class="ind-hero-note">Câmbio impacta o custo de insumos importados e o preço das commodities. Alta do dólar eleva preço do boi e dos grãos no mercado interno.</div>
+    <div class="ind-hero-val">${d.dolar || '—'}</div>
+    <div class="ind-hero-src">${d.dolarFonte || 'Banco Central do Brasil'}${d.dolarData ? ' · ' + d.dolarData : ''}</div>
+    <div class="ind-hero-note">Câmbio impacta o custo de insumos importados e o preço das commodities. Alta do dólar eleva o preço do boi e dos grãos no mercado interno.</div>
   </div>`;
 
-  // BOI GORDO — card destaque
-  h += `<div style="background:#0f3d1f;border-radius:var(--radius-md);padding:14px 16px;margin-bottom:10px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div style="font-size:12px;color:rgba(255,255,255,0.65)">Boi Gordo @ (CEPEA/Esalq — BCB)</div>
-      ${badge(!!d.boiGordo)}
-    </div>
-    <div style="display:flex;align-items:baseline;gap:4px">
-      <div style="font-size:26px;font-weight:600;color:#fff;letter-spacing:-0.5px">${d.boiGordo || '—'}</div>
-      ${d.boiVar ? varHtml(d.boiSinal, d.boiVar) : ''}
-    </div>
-    <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px">${d.boiFonte || 'CEPEA/Esalq'} ${d.boiGordoData ? '· ' + d.boiGordoData : ''}</div>
-    <div style="font-size:11px;color:rgba(255,255,255,0.65);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);font-family:var(--font-serif);font-style:italic;line-height:1.5">
-      Cotação nacional de referência. Preços regionais de Sinop/Colíder podem diferir — consulte IMEA/MT abaixo.
-    </div>
-  </div>`;
-
-  // SELIC, MILHO, SOJA — grid 2 colunas
-  const cards = [
-    {
-      nome: 'Selic Meta', valor: d.selicMeta || '—',
-      sub: d.selicData ? 'Copom · ' + d.selicData : 'Banco Central',
-      real: !!d.selicMeta,
-      nota: 'Juros altos encarecem o crédito rural e financiamentos agropecuários.'
-    },
-    {
-      nome: `Milho saca 60kg`, valor: d.milhoSaca || '—',
-      sub: d.milhoCBOT ? `CBOT: ${d.milhoCBOT}` : 'CBOT/Chicago',
-      real: !!d.milhoSaca,
-      nota: 'Insumo energético principal da suplementação bovina.'
-    },
-    {
-      nome: `Soja saca 60kg`, valor: d.sojaSaca || '—',
-      sub: d.sojaCBOT ? `CBOT: ${d.sojaCBOT}` : 'CBOT/Chicago',
-      real: !!d.sojaSaca,
-      nota: 'Fonte proteica via farelo — impacto direto na nutrição bovina.'
-    }
-  ];
-
-  h += `<div class="ind-grid" style="grid-template-columns:1fr;gap:8px;margin-bottom:10px">`;
-  for (const c of cards) {
-    h += `<div class="ind-card" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-      <div style="flex:1">
-        <div class="ind-name" style="margin-bottom:3px">${c.nome} ${badgeSm(c.real)}</div>
-        <div class="ind-val">${c.valor}</div>
-        <div class="ind-src">${c.sub}</div>
-      </div>
-      <div style="font-size:11px;color:var(--text-soft);max-width:140px;line-height:1.4;text-align:right;padding-top:2px">${c.nota}</div>
-    </div>`;
-  }
-  h += '</div>';
-
-  // Links IMEA e Scot
-  h += `<div style="background:#fdf3dc;border:1px solid #f0d080;border-radius:10px;padding:12px 14px;margin-top:2px">
-    <div style="font-size:12px;font-weight:600;color:#633806;margin-bottom:6px">📌 Boi gordo regional — Sinop / Colíder / MT</div>
-    <div style="display:flex;flex-direction:column;gap:6px">
+  // BOI GORDO — acesso direto IMEA e Scot
+  h += `<div style="background:#fdf3dc;border:1px solid #f0d080;border-radius:var(--radius-lg);padding:14px;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:600;color:#633806;margin-bottom:10px">🐂 Boi gordo — Sinop / Colíder / Norte do MT</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
       <a href="https://www.imea.com.br/imea-site/indicador-boi" target="_blank"
-         style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #f0d080;border-radius:8px;padding:9px 12px;text-decoration:none">
-        <span style="font-size:16px">📊</span>
+         style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #f0d080;border-radius:10px;padding:11px 13px;text-decoration:none">
+        <span style="font-size:20px">📊</span>
         <span style="flex:1">
-          <span style="display:block;font-size:13px;font-weight:600;color:#633806">IMEA/MT — Indicador Boi Gordo</span>
-          <span style="font-size:11px;color:#854F0B">Instituto Mato-Grossense de Economia Agropecuária</span>
+          <span style="display:block;font-size:13px;font-weight:600;color:#633806;margin-bottom:1px">IMEA/MT — Indicador Boi Gordo</span>
+          <span style="font-size:11px;color:#854F0B">Cotação boi gordo Mato Grosso — atualização diária</span>
         </span>
-        <span style="font-size:12px;color:#854F0B">→</span>
+        <span style="font-size:14px;color:#854F0B;font-weight:600">→</span>
       </a>
       <a href="https://www.scotconsultoria.com.br/cotacoes/boi/" target="_blank"
-         style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #f0d080;border-radius:8px;padding:9px 12px;text-decoration:none">
-        <span style="font-size:16px">🐂</span>
+         style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #f0d080;border-radius:10px;padding:11px 13px;text-decoration:none">
+        <span style="font-size:20px">📈</span>
         <span style="flex:1">
-          <span style="display:block;font-size:13px;font-weight:600;color:#633806">Scot Consultoria — Cotações</span>
+          <span style="display:block;font-size:13px;font-weight:600;color:#633806;margin-bottom:1px">Scot Consultoria — Cotações</span>
           <span style="font-size:11px;color:#854F0B">Boi gordo por praça, incluindo Mato Grosso</span>
         </span>
-        <span style="font-size:12px;color:#854F0B">→</span>
+        <span style="font-size:14px;color:#854F0B;font-weight:600">→</span>
       </a>
     </div>
-    <div style="font-size:10px;color:#a07030;margin-top:8px;line-height:1.4">⚠️ IMEA e Scot Consultoria não possuem API pública gratuita. Acesse os links acima para a cotação exata de Sinop/Colíder.</div>
   </div>`;
 
+  // NOTÍCIAS DE COMMODITIES — preenchidas depois pela IA
+  h += `<p class="sec-label">Commodities que impactam a pecuária</p>
+  <div id="commodities-cards">
+    <div class="empty" style="padding:1.5rem 0">
+      <div class="empty-ico" style="font-size:20px">⏳</div>
+      <div class="empty-txt">Buscando notícias...</div>
+    </div>
+  </div>`;
+
+  el.innerHTML = h;
+}
+
+// ── PREENCHE NOTÍCIAS DE COMMODITIES NA ABA ÍNDICES ────────────────────────────
+function renderCommodities(noticias) {
+  const el = document.getElementById('commodities-cards');
+  if (!el || !noticias?.length) return;
+  let h = '';
+  for (const n of noticias) {
+    const temLink = n.url && n.url.startsWith('http');
+    h += `<div class="news-card" style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span class="pill pill-nac" style="margin-bottom:0">Commodities</span>
+        ${temLink ? `<a href="${n.url}" target="_blank"
+          style="font-size:11px;color:#1b5e2f;font-weight:600;text-decoration:none;
+                 background:#e8f5ec;padding:3px 9px;border-radius:20px;border:1px solid rgba(27,94,46,0.2)">
+          Ver notícia →</a>` : ''}
+      </div>
+      <div class="news-h">${n.titulo}</div>
+      <div class="news-p">${n.corpo}</div>
+      <div class="news-ft">${n.fonte} · ${n.data}</div>
+    </div>`;
+  }
   el.innerHTML = h;
 }
 
@@ -686,10 +651,13 @@ async function fetchNoticias() {
     });
     const data = await res.json();
     if (data.erro) throw new Error(data.erro);
-    if (data.macro)    renderNoticias(1, 'macro',    data.macro);
-    if (data.nacional) renderNoticias(2, 'nacional', data.nacional);
-    if (data.regional) renderNoticias(3, 'regional', data.regional);
+    if (data.commodities) renderCommodities(data.commodities);
+    if (data.macro)       renderNoticias(1, 'macro',    data.macro);
+    if (data.nacional)    renderNoticias(2, 'nacional', data.nacional);
+    if (data.regional)    renderNoticias(3, 'regional', data.regional);
   } catch(e) {
+    const elC = document.getElementById('commodities-cards');
+    if (elC) elC.innerHTML = `<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-txt" style="color:#b83232">Erro: ${e.message}</div></div>`;
     [1,2,3].forEach(i => {
       document.getElementById('p'+i).innerHTML =
         `<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-txt" style="color:#b83232">Erro: ${e.message}</div></div>`;
