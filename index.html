@@ -494,6 +494,9 @@ function setProgress(pct) {
 }
 
 // ── GERAÇÃO PRINCIPAL ────────────────────────────────────────────────────────
+const PROXY = 'https://boletim-proxy.andr-lui-c.workers.dev';
+let dadosMercado = {};
+
 async function gerar() {
   const key = getKey();
   if (!key || !key.startsWith('sk-ant-')) {
@@ -509,33 +512,35 @@ async function gerar() {
   document.getElementById('footer').textContent = '';
   document.getElementById('prog-wrap').style.display = 'block';
 
-  const tasks = [
-    { idx: 0, tipo: 'indices',  label: 'cotações de mercado',      pct: 25 },
-    { idx: 1, tipo: 'macro',    label: 'notícias macroeconômicas', pct: 50 },
-    { idx: 2, tipo: 'nacional', label: 'notícias nacionais',       pct: 75 },
-    { idx: 3, tipo: 'regional', label: 'notícias regionais',       pct: 100 }
-  ];
+  // PASSO 1: buscar dados reais de mercado
+  setSt('Buscando cotações reais (Banco Central, CEPEA)...', true);
+  setProgress(10);
+  await buscarMercadoReal();
+  setProgress(25);
 
-  for (const t of tasks) {
-    setSt(`Buscando ${t.label}...`, true);
-    await fetchPg(t.idx, t.tipo);
-    setProgress(t.pct);
-    await delay(400);
-  }
+  // PASSO 2: renderizar índices com dados reais
+  setSt('Montando painel de cotações...', true);
+  renderIndicesReais();
+  setProgress(40);
 
-  const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  // PASSO 3: buscar notícias via IA
+  setSt('Buscando notícias macroeconômicas...', true);
+  await fetchNoticias();
+  setProgress(100);
 
+  const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   document.getElementById('nav-wrap').style.display = 'block';
   document.getElementById('prog-wrap').style.display = 'none';
-  setSt(`Boletim carregado — toque nas abas para navegar.`);
+  setSt('Boletim carregado — toque nas abas para navegar.');
 
   const badge = document.getElementById('updated-badge');
   badge.style.display = 'block';
-  badge.textContent = `✓ Atualizado às ${hora} de ${now.toLocaleDateString('pt-BR')}`;
+  badge.textContent = `✓ Atualizado às ${hora} de ${new Date().toLocaleDateString('pt-BR')}`;
 
   document.getElementById('footer').innerHTML =
-    `<strong>Fontes:</strong> Scot Consultoria · IMEA/MT · Agrolink · Canal Rural · BeefPoint · Aprosoja-MT<br>
-     Boletim Monguini — gerado com inteligência artificial`;
+    `<strong>Cotações:</strong> Banco Central do Brasil · CEPEA/Esalq · CBOT<br>
+     <strong>Notícias:</strong> Canal Rural · Agrolink · BeefPoint · IMEA/MT<br>
+     Boletim Monguini — dados reais + inteligência artificial`;
 
   tab(0);
   btn.disabled = false;
@@ -544,187 +549,136 @@ async function gerar() {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ── CHAMADA À API ────────────────────────────────────────────────────────────
-async function fetchPg(idx, tipo) {
-  const d = now.toLocaleDateString('pt-BR');
-  const { sys, usr } = buildPrompt(tipo, d);
-
+// ── BUSCA DADOS REAIS DO WORKER ───────────────────────────────────────────────
+async function buscarMercadoReal() {
   try {
-    const key = getKey();
-    if (!key) throw new Error('SEM_CHAVE');
-
-    const proxyUrl = getProxy();
-    const endpoint = proxyUrl || 'https://api.anthropic.com/v1/messages';
-
-    const headers = { 'Content-Type': 'application/json', 'x-api-key': key };
-    if (!proxyUrl) {
-      headers['anthropic-version'] = '2023-06-01';
-      headers['anthropic-dangerous-direct-browser-access'] = 'true';
-    }
-
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1800,
-        system: sys,
-        messages: [{ role: 'user', content: usr }]
-      })
-    });
-
-    if (!res.ok) {
-      let errMsg = 'Erro ' + res.status;
-      try { const ed = await res.json(); errMsg = ed?.error?.message || errMsg; } catch(_){}
-      throw new Error(errMsg);
-    }
-
-    const data   = await res.json();
-    const txt    = (data.content || []).map(i => i.text || '').join('');
-    const clean  = txt.replace(/```json[\s\S]*?```|```[\s\S]*?```/g, m => m.replace(/```json|```/g, '')).trim();
-    const parsed = JSON.parse(clean);
-    render(idx, tipo, parsed);
-
-  } catch (e) {
-    let msg = 'Erro desconhecido. Tente novamente.';
-    if (e.message === 'SEM_CHAVE') msg = 'Cole sua API Key no campo acima.';
-    else if (e.message.includes('401')) msg = 'API Key inválida. Verifique se copiou corretamente.';
-    else if (e.message.includes('403')) msg = 'API Key sem permissão. Verifique no console.anthropic.com.';
-    else if (e.message.includes('429')) msg = 'Limite de uso atingido. Aguarde alguns minutos.';
-    else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('CORS')) {
-      msg = 'Bloqueio de segurança (CORS). Configure o Proxy URL nas configurações abaixo.';
-    }
-    else msg = 'Erro: ' + e.message;
-
-    document.getElementById('p' + idx).innerHTML =
-      `<div class="empty">
-        <div class="empty-ico">⚠️</div>
-        <div class="empty-txt" style="color:#b83232;font-weight:500;margin-bottom:8px">${msg}</div>
-       </div>`;
+    const res = await fetch(`${PROXY}/dados-mercado`);
+    dadosMercado = await res.json();
+  } catch(e) {
+    dadosMercado = { erro: e.message };
   }
 }
 
-// ── PROMPTS ──────────────────────────────────────────────────────────────────
-function buildPrompt(tipo, d) {
-  if (tipo === 'indices') {
-    return {
-      sys: 'Você é analista sênior de mercado agropecuário brasileiro. Responda APENAS com JSON válido, sem nenhum texto antes ou depois, sem blocos markdown.',
-      usr: `Gere indicadores de mercado realistas para ${d}, focado em pecuária bovina no norte do Mato Grosso (Colíder/Sinop). Use valores próximos à realidade atual do mercado brasileiro. Retorne SOMENTE este JSON:
-{"indicadores":[
-{"titulo":"Dólar (PTAX)","valor":"R$ X,XX","variacao":"+X,XX%","sinal":"up","fonte":"Banco Central do Brasil","analise":"Como a variação do dólar impacta os custos de suplementação bovina e commodities para o produtor do norte do MT. 1-2 frases diretas."},
-{"titulo":"Boi Gordo @ — MT","valor":"R$ XXX,XX","variacao":"+X,XX%","sinal":"up","fonte":"Scot Consultoria","analise":"Impacto na decisão de venda do produtor e oportunidade para vendas de suplementos de terminação. 1-2 frases."},
-{"titulo":"Vaca Gorda @ — MT","valor":"R$ XXX,XX","variacao":"-X,XX%","sinal":"down","fonte":"Scot Consultoria","analise":"Impacto no mercado de descarte e como isso afeta a demanda por nutrição. 1-2 frases."},
-{"titulo":"Bezerro Macho — MT","valor":"R$ X.XXX","variacao":"+X,XX%","sinal":"up","fonte":"IMEA/MT","analise":"Impacto na reposição e oportunidade de venda de suplementos para recria. 1-2 frases."},
-{"titulo":"Bezerro Fêmea — MT","valor":"R$ X.XXX","variacao":"-X,XX%","sinal":"down","fonte":"IMEA/MT","analise":"Tendência de retenção de fêmeas e impacto na demanda por nutrição reprodutiva. 1-2 frases."},
-{"titulo":"Milho saca 60kg — MT","valor":"R$ XX,XX","variacao":"+X,XX%","sinal":"up","fonte":"IMEA/MT","analise":"Como o preço do milho afeta o custo de suplementação energética no norte do MT. 1-2 frases."},
-{"titulo":"Soja saca 60kg — MT","valor":"R$ XXX,XX","variacao":"-X,XX%","sinal":"down","fonte":"IMEA/MT","analise":"Relação com uso do farelo de soja como fonte proteica na dieta bovina. 1-2 frases."}
-]}
-Preencha com valores realistas e análises práticas. Varie os sinais (up/down) de forma realista.`
-    };
-  }
-  if (tipo === 'macro') {
-    return {
-      sys: 'Você é jornalista econômico especializado em agronegócio brasileiro. Responda APENAS com JSON válido, sem texto extra.',
-      usr: `Crie 3 notícias de macroeconomia com impacto direto no agronegócio para ${d}. Temas relevantes: câmbio e exportações, Selic e crédito rural, inflação de insumos, mercado internacional de carnes, acordos comerciais. JSON:
-{"noticias":[
-{"titulo":"Título impactante e informativo","corpo":"2-3 frases explicando a notícia e seu impacto direto no agronegócio e na pecuária do MT.","fonte":"Canal Rural","data":"${d}"},
-{"titulo":"...","corpo":"...","fonte":"Valor Econômico","data":"${d}"},
-{"titulo":"...","corpo":"...","fonte":"Reuters Agro","data":"${d}"}
-]}`
-    };
-  }
-  if (tipo === 'nacional') {
-    return {
-      sys: 'Você é jornalista especializado em agronegócio nacional. Responda APENAS com JSON válido.',
-      usr: `Crie 5 notícias nacionais do agronegócio para ${d}. Variar temas: pecuária bovina, rastreabilidade, exportação de carne, política agrícola, sanidade animal (febre aftosa, brucelose), mercado de insumos, frigoríficos. JSON:
-{"noticias":[
-{"titulo":"...","corpo":"2-3 frases com contexto nacional e relevância para produtor de MT.","fonte":"Agrolink","data":"${d}"},
-{"titulo":"...","corpo":"...","fonte":"Canal Rural","data":"${d}"},
-{"titulo":"...","corpo":"...","fonte":"BeefPoint","data":"${d}"},
-{"titulo":"...","corpo":"...","fonte":"Agrolink","data":"${d}"},
-{"titulo":"...","corpo":"...","fonte":"Canal Rural","data":"${d}"}
-]}`
-    };
-  }
-  // regional
-  return {
-    sys: 'Você é jornalista especializado no agronegócio do norte do Mato Grosso. Responda APENAS com JSON válido.',
-    usr: `Crie 5 notícias regionais do agronegócio para o norte do MT (Colíder, Sinop, Alta Floresta, Guarantã do Norte, Terra Nova do Norte) para ${d}. Temas: clima e previsão do tempo, pecuária local, frigoríficos da região, soja e milho locais, estradas e logística, eventos rurais, preços locais, IMEA/MT. JSON:
-{"noticias":[
-{"titulo":"...","corpo":"2-3 frases com detalhes regionais específicos do norte do MT.","fonte":"IMEA/MT","data":"${d}"},
-{"titulo":"...","corpo":"...","fonte":"Aprosoja-MT","data":"${d}"},
-{"titulo":"...","corpo":"...","fonte":"Portal Sinop","data":"${d}"},
-{"titulo":"...","corpo":"...","fonte":"IMEA/MT","data":"${d}"},
-{"titulo":"...","corpo":"...","fonte":"Canal Rural MT","data":"${d}"}
-]}`
-  };
-}
+// ── RENDERIZA ÍNDICES COM DADOS REAIS ─────────────────────────────────────────
+function renderIndicesReais() {
+  const el = document.getElementById('p0');
+  const d = dadosMercado;
+  const hoje = new Date().toLocaleDateString('pt-BR');
 
-// ── RENDERIZAÇÃO ─────────────────────────────────────────────────────────────
-function render(idx, tipo, data) {
-  const el = document.getElementById('p' + idx);
+  const inds = [
+    {
+      nome: 'Dólar (PTAX — Banco Central)',
+      valor: d.dolar || '—',
+      obs: d.dolarObs || '',
+      fonte: 'Banco Central do Brasil',
+      real: !!d.dolar,
+      nota: 'Câmbio impacta diretamente o custo de insumos importados e o preço das commodities exportadas. Alta do dólar tende a elevar o preço do boi e dos grãos.'
+    },
+    {
+      nome: 'Selic Meta (Banco Central)',
+      valor: d.selicMeta || d.selic || '—',
+      fonte: 'Banco Central do Brasil',
+      real: !!(d.selicMeta || d.selic),
+      nota: 'Taxa básica de juros que influencia o custo do crédito rural. Selic elevada encarece financiamentos e pode reduzir investimentos no setor.'
+    },
+    {
+      nome: 'Boi Gordo @ (CEPEA/Esalq)',
+      valor: d.boiGordo || 'Consulte Scot Consultoria',
+      fonte: d.boiFonte || 'CEPEA/Esalq',
+      real: !!d.boiGordo,
+      nota: 'Referência nacional. Preços regionais (MT) podem variar. Consulte Scot Consultoria e IMEA/MT para cotações específicas de Sinop/Colíder.'
+    },
+    {
+      nome: 'Milho saca 60kg (CBOT)',
+      valor: d.milhoSaca || '—',
+      fonte: d.milhoFonte || 'CBOT',
+      real: !!d.milhoSaca,
+      nota: 'Preço do milho impacta diretamente o custo da suplementação energética bovina. Alta do milho pressiona margens do pecuarista.'
+    },
+    {
+      nome: 'Soja saca 60kg (CBOT)',
+      valor: d.sojaSaca || '—',
+      fonte: d.sojaFonte || 'CBOT',
+      real: !!d.sojaSaca,
+      nota: 'Farelo de soja é principal fonte proteica na dieta bovina. Correlação direta com custo de suplementação proteica.'
+    }
+  ];
 
-  if (tipo === 'indices') {
-    const inds = data.indicadores || [];
-    if (!inds.length) { el.innerHTML = errHtml(); return; }
+  const hero = inds[0];
+  let h = `<p class="sec-label">Cotações reais — ${hoje}</p>`;
 
-    const hero  = inds[0];
-    const resto = inds.slice(1);
-    const heroChgClass = hero.sinal === 'up' ? 'chg-up' : 'chg-dn';
-    const heroArrow    = hero.sinal === 'up' ? '▲' : '▼';
+  h += `<div class="ind-hero">
+    <div class="ind-hero-name">${hero.nome} ${hero.real ? '<span style="font-size:10px;background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;margin-left:4px">✓ DADO REAL</span>' : ''}</div>
+    <div class="ind-hero-val">${hero.valor}</div>
+    ${hero.obs ? `<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px">${hero.obs}</div>` : ''}
+    <div class="ind-hero-src">Fonte: ${hero.fonte}</div>
+    <div class="ind-hero-note">${hero.nota}</div>
+  </div>`;
 
-    let h = `<p class="sec-label">Cotações — ${now.toLocaleDateString('pt-BR')}</p>`;
-
-    h += `<div class="ind-hero">
-      <div class="ind-hero-name">${hero.titulo}</div>
-      <div class="ind-hero-val">${hero.valor}</div>
-      <div class="ind-hero-chg ${heroChgClass}">${heroArrow} ${hero.variacao}</div>
-      <div class="ind-hero-src">Fonte: ${hero.fonte}</div>
-      <div class="ind-hero-note">${hero.analise}</div>
+  h += '<div class="ind-grid">';
+  for (const c of inds.slice(1)) {
+    h += `<div class="ind-card">
+      <div class="ind-name">${c.nome} ${c.real ? '<span style="font-size:9px;background:#e8f5ec;color:#1b5e2f;padding:1px 5px;border-radius:3px">REAL</span>' : ''}</div>
+      <div class="ind-val" style="font-size:15px">${c.valor}</div>
+      <div class="ind-src">${c.fonte}</div>
+      <div class="ind-note">${c.nota}</div>
     </div>`;
-
-    h += '<div class="ind-grid">';
-    for (const c of resto) {
-      const cls   = c.sinal === 'up' ? 'chg-up' : 'chg-dn';
-      const arrow = c.sinal === 'up' ? '▲' : '▼';
-      h += `<div class="ind-card">
-        <div class="ind-name">${c.titulo}</div>
-        <div class="ind-val">${c.valor}</div>
-        <div class="ind-chg ${cls}">${arrow} ${c.variacao}</div>
-        <div class="ind-src">${c.fonte}</div>
-        <div class="ind-note">${c.analise}</div>
-      </div>`;
-    }
-    h += '</div>';
-    el.innerHTML = h;
-    return;
   }
+  h += '</div>';
 
+  // aviso de fontes complementares
+  h += `<div style="background:#fdf3dc;border:1px solid #f0d080;border-radius:10px;padding:12px 14px;margin-top:4px">
+    <div style="font-size:12px;font-weight:600;color:#633806;margin-bottom:4px">📌 Para boi gordo regional (Sinop/Colíder)</div>
+    <div style="font-size:12px;color:#854F0B;line-height:1.5">Consulte diariamente:
+      <a href="https://www.scotconsultoria.com.br" target="_blank" style="color:#854F0B;font-weight:600"> Scot Consultoria</a> ·
+      <a href="https://www.imea.com.br" target="_blank" style="color:#854F0B;font-weight:600"> IMEA/MT</a>
+    </div>
+  </div>`;
+
+  el.innerHTML = h;
+}
+
+// ── BUSCA NOTÍCIAS VIA IA (com dados reais injetados) ─────────────────────────
+async function fetchNoticias() {
+  try {
+    const res = await fetch(`${PROXY}/noticias`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': getKey() },
+      body: JSON.stringify({ dados: dadosMercado })
+    });
+    const data = await res.json();
+    if (data.macro)    renderNoticias(1, 'macro',    data.macro);
+    if (data.nacional) renderNoticias(2, 'nacional', data.nacional);
+    if (data.regional) renderNoticias(3, 'regional', data.regional);
+  } catch(e) {
+    [1,2,3].forEach(i => {
+      document.getElementById('p'+i).innerHTML =
+        `<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-txt" style="color:#b83232">Erro: ${e.message}</div></div>`;
+    });
+  }
+}
+
+function renderNoticias(idx, tipo, noticias) {
   const cfg = {
-    macro:    { pillCls: 'pill-macro', pillTxt: 'Macro',      label: 'Macroeconomia' },
-    nacional: { pillCls: 'pill-nac',   pillTxt: 'Nacional',   label: 'Agronegócio nacional' },
-    regional: { pillCls: 'pill-reg',   pillTxt: 'Regional MT', label: 'Norte do Mato Grosso' }
+    macro:    { pillCls: 'pill-macro', label: 'Macroeconomia' },
+    nacional: { pillCls: 'pill-nac',   label: 'Agronegócio nacional' },
+    regional: { pillCls: 'pill-reg',   label: 'Norte do Mato Grosso' }
   }[tipo];
-
-  const noticias = data.noticias || [];
-  if (!noticias.length) { el.innerHTML = errHtml(); return; }
-
+  const el = document.getElementById('p' + idx);
   let h = `<p class="sec-label">${cfg.label}</p>`;
   for (const n of noticias) {
     h += `<div class="news-card">
-      <span class="pill ${cfg.pillCls}">${cfg.pillTxt}</span>
+      <span class="pill ${cfg.pillCls}">${cfg.label}</span>
       <div class="news-h">${n.titulo}</div>
       <div class="news-p">${n.corpo}</div>
-      <div class="news-ft">${n.fonte} &nbsp;·&nbsp; ${n.data}</div>
+      <div class="news-ft">${n.fonte} · ${n.data}</div>
     </div>`;
   }
   el.innerHTML = h;
 }
 
-function errHtml() {
-  return `<div class="empty"><div class="empty-ico">⚠️</div>
-    <div class="empty-txt">Erro ao carregar.<br>Tente gerar novamente.</div></div>`;
-}
+// ── CHAMADA LEGADA (não usada mais, mantida por compatibilidade) ───────────────
+async function fetchPg(idx, tipo) {}
 </script>
 </body>
 </html>
