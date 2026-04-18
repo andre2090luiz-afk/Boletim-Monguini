@@ -545,11 +545,14 @@ async function fetchPg(idx, tipo) {
   const { sys, usr } = buildPrompt(tipo, d);
 
   try {
+    const key = getKey();
+    if (!key) throw new Error('SEM_CHAVE');
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': getKey(),
+        'x-api-key': key,
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
@@ -560,16 +563,36 @@ async function fetchPg(idx, tipo) {
         messages: [{ role: 'user', content: usr }]
       })
     });
-    if (!res.ok) throw new Error('API error ' + res.status);
+
+    if (!res.ok) {
+      let errMsg = 'Erro ' + res.status;
+      try {
+        const errData = await res.json();
+        errMsg = errData?.error?.message || errMsg;
+      } catch(_){}
+      throw new Error(errMsg);
+    }
+
     const data   = await res.json();
     const txt    = (data.content || []).map(i => i.text || '').join('');
     const clean  = txt.replace(/```json[\s\S]*?```|```[\s\S]*?```/g, m => m.replace(/```json|```/g, '')).trim();
     const parsed = JSON.parse(clean);
     render(idx, tipo, parsed);
+
   } catch (e) {
+    let msg = 'Erro desconhecido. Tente novamente.';
+    if (e.message === 'SEM_CHAVE') msg = 'Cole sua API Key no campo acima.';
+    else if (e.message.includes('401')) msg = 'API Key inválida. Verifique se copiou corretamente.';
+    else if (e.message.includes('403')) msg = 'API Key sem permissão. Verifique no console.anthropic.com.';
+    else if (e.message.includes('429')) msg = 'Limite de uso atingido. Aguarde alguns minutos.';
+    else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) msg = 'Erro de conexão. Verifique sua internet.';
+    else msg = 'Erro: ' + e.message;
+
     document.getElementById('p' + idx).innerHTML =
-      `<div class="empty"><div class="empty-ico">⚠️</div>
-       <div class="empty-txt">Não foi possível carregar.<br>Verifique sua conexão e tente novamente.</div></div>`;
+      `<div class="empty">
+        <div class="empty-ico">⚠️</div>
+        <div class="empty-txt" style="color:#b83232;font-weight:500">${msg}</div>
+       </div>`;
   }
 }
 
