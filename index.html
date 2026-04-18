@@ -371,6 +371,16 @@ body {
 </div>
 
 <div class="gen-wrap">
+  <div id="key-wrap" style="margin-bottom:10px">
+    <label style="display:block;font-size:11px;font-weight:600;color:#4a4a4a;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Chave de acesso (API Key)</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="password" id="apikey" placeholder="sk-ant-..." autocomplete="off"
+        style="flex:1;padding:12px 14px;border:1px solid #d0d0d0;border-radius:10px;font-size:14px;font-family:inherit;background:#fff;color:#1a1a1a;outline:none"
+        oninput="salvarKey(this.value)">
+      <button onclick="toggleKey()" style="padding:12px;border:1px solid #d0d0d0;border-radius:10px;background:#fff;cursor:pointer;font-size:16px" title="Mostrar/ocultar">👁</button>
+    </div>
+    <p style="font-size:11px;color:#888;margin-top:5px;line-height:1.4">Cole sua chave Anthropic. Ela fica salva só neste aparelho.</p>
+  </div>
   <button class="gen-btn" id="gbtn" onclick="gerar()">
     <span class="btn-icon">▶</span>
     <span id="gbtn-txt">Gerar boletim de hoje</span>
@@ -436,6 +446,24 @@ body {
 <div class="footer" id="footer"></div>
 
 <script>
+// ── API KEY ──────────────────────────────────────────────────────────────────
+function salvarKey(v) { try { localStorage.setItem('mng_key', v); } catch(e){} }
+function toggleKey() {
+  const inp = document.getElementById('apikey');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+function getKey() {
+  const inp = document.getElementById('apikey');
+  if (inp && inp.value.trim()) return inp.value.trim();
+  try { return localStorage.getItem('mng_key') || ''; } catch(e){ return ''; }
+}
+window.addEventListener('DOMContentLoaded', function() {
+  try {
+    const k = localStorage.getItem('mng_key');
+    if (k) { const inp = document.getElementById('apikey'); if(inp) inp.value = k; }
+  } catch(e){}
+});
+
 // ── DATA / HORA ──────────────────────────────────────────────────────────────
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const DIAS  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
@@ -462,6 +490,11 @@ function setProgress(pct) {
 
 // ── GERAÇÃO PRINCIPAL ────────────────────────────────────────────────────────
 async function gerar() {
+  const key = getKey();
+  if (!key || !key.startsWith('sk-ant-')) {
+    setSt('⚠️ Cole sua API Key no campo acima antes de gerar o boletim.');
+    return;
+  }
   const btn  = document.getElementById('gbtn');
   const btxt = document.getElementById('gbtn-txt');
   btn.disabled = true;
@@ -514,7 +547,12 @@ async function fetchPg(idx, tipo) {
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': getKey(),
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1800,
