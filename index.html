@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="description" content="Boletim diário de agronegócio para o norte do Mato Grosso — nutrição bovina, cotações e notícias.">
+<title>Boletim Monguini</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green-deep: #0f3d1f;
+  --green-mid:  #1b6b35;
+  --green-lite: #2d9a50;
+  --green-pale: #e8f5ec;
+  --amber:      #c47f17;
+  --amber-pale: #fdf3dc;
+  --red:        #b83232;
+  --red-pale:   #fdeaea;
+  --blue-pale:  #e8f0fb;
+  --blue-text:  #1a4a8a;
+  --text:       #1a1a1a;
+  --text-mid:   #4a4a4a;
+  --text-soft:  #7a7a7a;
+  --bg:         #f4f6f2;
+  --surface:    #ffffff;
+  --border:     rgba(0,0,0,0.09);
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  18px;
+  --font-head:  'Sora', sans-serif;
+  --font-body:  'Sora', sans-serif;
+  --font-serif: 'Lora', serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── HEADER ── */
+.header {
+  background: var(--green-deep);
+  padding: 24px 20px 20px;
+  position: relative;
+  overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+}
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -30px; left: 20px;
+  width: 100px; height: 100px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.03);
+}
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.logo-icon {
+  width: 40px; height: 40px;
+  background: var(--green-lite);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.logo-text {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+.header-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.3px;
+}
+.header-date {
+  margin-top: 14px;
+  display: inline-block;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.8);
+}
+
+/* ── GENERATE BUTTON ── */
+.gen-wrap { padding: 16px 16px 0; }
+.gen-btn {
+  width: 100%;
+  padding: 17px 20px;
+  background: var(--green-mid);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-head);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  transition: background 0.15s, transform 0.1s;
+  letter-spacing: -0.2px;
+}
+.gen-btn:active:not(:disabled) { transform: scale(0.98); background: var(--green-deep); }
+.gen-btn:disabled { background: #7aaa8a; cursor: default; }
+.gen-btn .btn-icon { font-size: 18px; }
+
+/* ── STATUS ── */
+.status-wrap { padding: 10px 16px 0; }
+.status {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 13px 15px;
+  font-size: 13px;
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  line-height: 1.4;
+}
+.pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green-mid);
+  flex-shrink: 0;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.2;transform:scale(0.8)} }
+
+/* ── PROGRESS BAR ── */
+.progress-wrap { padding: 10px 16px 0; display: none; }
+.progress-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--green-mid);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+/* ── NAV TABS ── */
+.nav-wrap { padding: 14px 16px 0; display: none; }
+.nav {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.nav-btn {
+  flex: 1;
+  padding: 12px 6px 10px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-soft);
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+  text-align: center;
+  line-height: 1.3;
+  transition: background 0.12s, color 0.12s;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+.nav-btn:last-child { border-right: none; }
+.nav-btn.on {
+  background: var(--green-deep);
+  color: #fff;
+}
+.nav-btn .nav-ico { font-size: 16px; }
+
+/* ── PAGES ── */
+.pages { padding: 14px 16px 0; }
+.pg { display: none; animation: fadeIn 0.2s ease; }
+.pg.on { display: block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── SECTION LABEL ── */
+.sec-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-soft);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── INDICATOR CARDS ── */
+.ind-hero {
+  background: var(--green-deep);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  color: #fff;
+}
+.ind-hero-name { font-size: 12px; color: rgba(255,255,255,0.65); margin-bottom: 4px; }
+.ind-hero-val { font-size: 32px; font-weight: 600; letter-spacing: -1px; line-height: 1; }
+.ind-hero-chg { font-size: 13px; margin-top: 6px; font-weight: 500; }
+.ind-hero-src { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 8px; }
+.ind-hero-note {
+  font-size: 12px;
+  color: rgba(255,255,255,0.75);
+  line-height: 1.5;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+
+.ind-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
+.ind-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 13px;
+}
+.ind-name { font-size: 11px; color: var(--text-soft); margin-bottom: 5px; line-height: 1.3; }
+.ind-val { font-size: 17px; font-weight: 600; color: var(--text); line-height: 1; letter-spacing: -0.5px; }
+.ind-chg { font-size: 11px; margin-top: 4px; font-weight: 500; }
+.chg-up { color: var(--green-mid); }
+.chg-dn { color: var(--red); }
+.ind-src { font-size: 10px; color: var(--text-soft); margin-top: 5px; }
+.ind-note {
+  font-size: 11px;
+  color: var(--text-mid);
+  line-height: 1.5;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── NEWS CARDS ── */
+.news-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 15px 16px;
+  margin-bottom: 10px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 9px;
+}
+.pill-macro { background: var(--blue-pale); color: var(--blue-text); }
+.pill-nac   { background: var(--green-pale); color: var(--green-deep); }
+.pill-reg   { background: var(--amber-pale); color: var(--amber); }
+
+.news-h {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 7px;
+  letter-spacing: -0.2px;
+}
+.news-p {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--text-mid);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.news-ft {
+  font-size: 11px;
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.news-ft::before {
+  content: '';
+  display: inline-block;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--text-soft);
+}
+
+/* ── EMPTY STATE ── */
+.empty {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--text-soft);
+}
+.empty-ico { font-size: 36px; margin-bottom: 12px; }
+.empty-txt { font-size: 14px; line-height: 1.5; }
+
+/* ── FOOTER ── */
+.footer {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-soft);
+  padding: 16px 16px 32px;
+  line-height: 1.6;
+}
+.footer strong { color: var(--text-mid); font-weight: 500; }
+
+/* ── LAST UPDATED BADGE ── */
+.updated-badge {
+  display: none;
+  margin: 10px 16px 0;
+  background: var(--green-pale);
+  border: 1px solid rgba(27,107,53,0.2);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--green-deep);
+  font-weight: 500;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-row">
+    <div class="logo-icon">🌿</div>
+    <div class="logo-text">Boletim Monguini</div>
+  </div>
+  <div class="header-sub">Nutrição Bovina · Norte do Mato Grosso</div>
+  <div class="header-date" id="hdate">carregando data...</div>
+</div>
+
+<div class="gen-wrap">
+  <button class="gen-btn" id="gbtn" onclick="gerar()">
+    <span class="btn-icon">▶</span>
+    <span id="gbtn-txt">Gerar boletim de hoje</span>
+  </button>
+</div>
+
+<div class="progress-wrap" id="prog-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+</div>
+
+<div class="status-wrap">
+  <div class="status" id="sbox">
+    <span>Toque no botão para carregar o boletim atualizado.</span>
+  </div>
+</div>
+
+<div class="updated-badge" id="updated-badge"></div>
+
+<div class="nav-wrap" id="nav-wrap">
+  <div class="nav">
+    <button class="nav-btn on" onclick="tab(0)">
+      <span class="nav-ico">📊</span>Índices
+    </button>
+    <button class="nav-btn" onclick="tab(1)">
+      <span class="nav-ico">🌍</span>Macro
+    </button>
+    <button class="nav-btn" onclick="tab(2)">
+      <span class="nav-ico">🇧🇷</span>Nacional
+    </button>
+    <button class="nav-btn" onclick="tab(3)">
+      <span class="nav-ico">📍</span>Regional
+    </button>
+  </div>
+</div>
+
+<div class="pages">
+  <div class="pg on" id="p0">
+    <div class="empty">
+      <div class="empty-ico">📊</div>
+      <div class="empty-txt">Toque em <strong>Gerar boletim</strong><br>para carregar as cotações do dia.</div>
+    </div>
+  </div>
+  <div class="pg" id="p1">
+    <div class="empty">
+      <div class="empty-ico">🌍</div>
+      <div class="empty-txt">Aguardando geração do boletim.</div>
+    </div>
+  </div>
+  <div class="pg" id="p2">
+    <div class="empty">
+      <div class="empty-ico">🇧🇷</div>
+      <div class="empty-txt">Aguardando geração do boletim.</div>
+    </div>
+  </div>
+  <div class="pg" id="p3">
+    <div class="empty">
+      <div class="empty-ico">📍</div>
+      <div class="empty-txt">Aguardando geração do boletim.</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer" id="footer"></div>
+
+<script>
+// ── DATA / HORA ──────────────────────────────────────────────────────────────
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DIAS  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const now   = new Date();
+const dateStr = `${DIAS[now.getDay()]}, ${now.getDate()} de ${MESES[now.getMonth()]} de ${now.getFullYear()}`;
+document.getElementById('hdate').textContent = dateStr;
+
+// ── NAVEGAÇÃO ────────────────────────────────────────────────────────────────
+function tab(i) {
+  document.querySelectorAll('.nav-btn').forEach((b, j) => b.classList.toggle('on', i === j));
+  document.querySelectorAll('.pg').forEach((p, j) => p.classList.toggle('on', i === j));
+}
+
+// ── STATUS / PROGRESS ────────────────────────────────────────────────────────
+function setSt(msg, loading = false) {
+  const box = document.getElementById('sbox');
+  box.innerHTML = loading
+    ? `<span class="pulse"></span><span>${msg}</span>`
+    : `<span>${msg}</span>`;
+}
+function setProgress(pct) {
+  document.getElementById('prog').style.width = pct + '%';
+}
+
+// ── GERAÇÃO PRINCIPAL ────────────────────────────────────────────────────────
+async function gerar() {
+  const btn  = document.getElementById('gbtn');
+  const btxt = document.getElementById('gbtn-txt');
+  btn.disabled = true;
+  btxt.textContent = 'Gerando boletim...';
+  document.getElementById('nav-wrap').style.display = 'none';
+  document.getElementById('updated-badge').style.display = 'none';
+  document.getElementById('footer').textContent = '';
+  document.getElementById('prog-wrap').style.display = 'block';
+
+  const tasks = [
+    { idx: 0, tipo: 'indices',  label: 'cotações de mercado',      pct: 25 },
+    { idx: 1, tipo: 'macro',    label: 'notícias macroeconômicas', pct: 50 },
+    { idx: 2, tipo: 'nacional', label: 'notícias nacionais',       pct: 75 },
+    { idx: 3, tipo: 'regional', label: 'notícias regionais',       pct: 100 }
+  ];
+
+  for (const t of tasks) {
+    setSt(`Buscando ${t.label}...`, true);
+    await fetchPg(t.idx, t.tipo);
+    setProgress(t.pct);
+    await delay(400);
+  }
+
+  const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  document.getElementById('nav-wrap').style.display = 'block';
+  document.getElementById('prog-wrap').style.display = 'none';
+  setSt(`Boletim carregado — toque nas abas para navegar.`);
+
+  const badge = document.getElementById('updated-badge');
+  badge.style.display = 'block';
+  badge.textContent = `✓ Atualizado às ${hora} de ${now.toLocaleDateString('pt-BR')}`;
+
+  document.getElementById('footer').innerHTML =
+    `<strong>Fontes:</strong> Scot Consultoria · IMEA/MT · Agrolink · Canal Rural · BeefPoint · Aprosoja-MT<br>
+     Boletim Monguini — gerado com inteligência artificial`;
+
+  tab(0);
+  btn.disabled = false;
+  btxt.textContent = '↻ Atualizar boletim';
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── CHAMADA À API ────────────────────────────────────────────────────────────
+async function fetchPg(idx, tipo) {
+  const d = now.toLocaleDateString('pt-BR');
+  const { sys, usr } = buildPrompt(tipo, d);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1800,
+        system: sys,
+        messages: [{ role: 'user', content: usr }]
+      })
+    });
+    if (!res.ok) throw new Error('API error ' + res.status);
+    const data   = await res.json();
+    const txt    = (data.content || []).map(i => i.text || '').join('');
+    const clean  = txt.replace(/```json[\s\S]*?```|```[\s\S]*?```/g, m => m.replace(/```json|```/g, '')).trim();
+    const parsed = JSON.parse(clean);
+    render(idx, tipo, parsed);
+  } catch (e) {
+    document.getElementById('p' + idx).innerHTML =
+      `<div class="empty"><div class="empty-ico">⚠️</div>
+       <div class="empty-txt">Não foi possível carregar.<br>Verifique sua conexão e tente novamente.</div></div>`;
+  }
+}
+
+// ── PROMPTS ──────────────────────────────────────────────────────────────────
+function buildPrompt(tipo, d) {
+  if (tipo === 'indices') {
+    return {
+      sys: 'Você é analista sênior de mercado agropecuário brasileiro. Responda APENAS com JSON válido, sem nenhum texto antes ou depois, sem blocos markdown.',
+      usr: `Gere indicadores de mercado realistas para ${d}, focado em pecuária bovina no norte do Mato Grosso (Colíder/Sinop). Use valores próximos à realidade atual do mercado brasileiro. Retorne SOMENTE este JSON:
+{"indicadores":[
+{"titulo":"Dólar (PTAX)","valor":"R$ X,XX","variacao":"+X,XX%","sinal":"up","fonte":"Banco Central do Brasil","analise":"Como a variação do dólar impacta os custos de suplementação bovina e commodities para o produtor do norte do MT. 1-2 frases diretas."},
+{"titulo":"Boi Gordo @ — MT","valor":"R$ XXX,XX","variacao":"+X,XX%","sinal":"up","fonte":"Scot Consultoria","analise":"Impacto na decisão de venda do produtor e oportunidade para vendas de suplementos de terminação. 1-2 frases."},
+{"titulo":"Vaca Gorda @ — MT","valor":"R$ XXX,XX","variacao":"-X,XX%","sinal":"down","fonte":"Scot Consultoria","analise":"Impacto no mercado de descarte e como isso afeta a demanda por nutrição. 1-2 frases."},
+{"titulo":"Bezerro Macho — MT","valor":"R$ X.XXX","variacao":"+X,XX%","sinal":"up","fonte":"IMEA/MT","analise":"Impacto na reposição e oportunidade de venda de suplementos para recria. 1-2 frases."},
+{"titulo":"Bezerro Fêmea — MT","valor":"R$ X.XXX","variacao":"-X,XX%","sinal":"down","fonte":"IMEA/MT","analise":"Tendência de retenção de fêmeas e impacto na demanda por nutrição reprodutiva. 1-2 frases."},
+{"titulo":"Milho saca 60kg — MT","valor":"R$ XX,XX","variacao":"+X,XX%","sinal":"up","fonte":"IMEA/MT","analise":"Como o preço do milho afeta o custo de suplementação energética no norte do MT. 1-2 frases."},
+{"titulo":"Soja saca 60kg — MT","valor":"R$ XXX,XX","variacao":"-X,XX%","sinal":"down","fonte":"IMEA/MT","analise":"Relação com uso do farelo de soja como fonte proteica na dieta bovina. 1-2 frases."}
+]}
+Preencha com valores realistas e análises práticas. Varie os sinais (up/down) de forma realista.`
+    };
+  }
+  if (tipo === 'macro') {
+    return {
+      sys: 'Você é jornalista econômico especializado em agronegócio brasileiro. Responda APENAS com JSON válido, sem texto extra.',
+      usr: `Crie 3 notícias de macroeconomia com impacto direto no agronegócio para ${d}. Temas relevantes: câmbio e exportações, Selic e crédito rural, inflação de insumos, mercado internacional de carnes, acordos comerciais. JSON:
+{"noticias":[
+{"titulo":"Título impactante e informativo","corpo":"2-3 frases explicando a notícia e seu impacto direto no agronegócio e na pecuária do MT.","fonte":"Canal Rural","data":"${d}"},
+{"titulo":"...","corpo":"...","fonte":"Valor Econômico","data":"${d}"},
+{"titulo":"...","corpo":"...","fonte":"Reuters Agro","data":"${d}"}
+]}`
+    };
+  }
+  if (tipo === 'nacional') {
+    return {
+      sys: 'Você é jornalista especializado em agronegócio nacional. Responda APENAS com JSON válido.',
+      usr: `Crie 5 notícias nacionais do agronegócio para ${d}. Variar temas: pecuária bovina, rastreabilidade, exportação de carne, política agrícola, sanidade animal (febre aftosa, brucelose), mercado de insumos, frigoríficos. JSON:
+{"noticias":[
+{"titulo":"...","corpo":"2-3 frases com contexto nacional e relevância para produtor de MT.","fonte":"Agrolink","data":"${d}"},
+{"titulo":"...","corpo":"...","fonte":"Canal Rural","data":"${d}"},
+{"titulo":"...","corpo":"...","fonte":"BeefPoint","data":"${d}"},
+{"titulo":"...","corpo":"...","fonte":"Agrolink","data":"${d}"},
+{"titulo":"...","corpo":"...","fonte":"Canal Rural","data":"${d}"}
+]}`
+    };
+  }
+  // regional
+  return {
+    sys: 'Você é jornalista especializado no agronegócio do norte do Mato Grosso. Responda APENAS com JSON válido.',
+    usr: `Crie 5 notícias regionais do agronegócio para o norte do MT (Colíder, Sinop, Alta Floresta, Guarantã do Norte, Terra Nova do Norte) para ${d}. Temas: clima e previsão do tempo, pecuária local, frigoríficos da região, soja e milho locais, estradas e logística, eventos rurais, preços locais, IMEA/MT. JSON:
+{"noticias":[
+{"titulo":"...","corpo":"2-3 frases com detalhes regionais específicos do norte do MT.","fonte":"IMEA/MT","data":"${d}"},
+{"titulo":"...","corpo":"...","fonte":"Aprosoja-MT","data":"${d}"},
+{"titulo":"...","corpo":"...","fonte":"Portal Sinop","data":"${d}"},
+{"titulo":"...","corpo":"...","fonte":"IMEA/MT","data":"${d}"},
+{"titulo":"...","corpo":"...","fonte":"Canal Rural MT","data":"${d}"}
+]}`
+  };
+}
+
+// ── RENDERIZAÇÃO ─────────────────────────────────────────────────────────────
+function render(idx, tipo, data) {
+  const el = document.getElementById('p' + idx);
+
+  if (tipo === 'indices') {
+    const inds = data.indicadores || [];
+    if (!inds.length) { el.innerHTML = errHtml(); return; }
+
+    const hero  = inds[0];
+    const resto = inds.slice(1);
+    const heroChgClass = hero.sinal === 'up' ? 'chg-up' : 'chg-dn';
+    const heroArrow    = hero.sinal === 'up' ? '▲' : '▼';
+
+    let h = `<p class="sec-label">Cotações — ${now.toLocaleDateString('pt-BR')}</p>`;
+
+    h += `<div class="ind-hero">
+      <div class="ind-hero-name">${hero.titulo}</div>
+      <div class="ind-hero-val">${hero.valor}</div>
+      <div class="ind-hero-chg ${heroChgClass}">${heroArrow} ${hero.variacao}</div>
+      <div class="ind-hero-src">Fonte: ${hero.fonte}</div>
+      <div class="ind-hero-note">${hero.analise}</div>
+    </div>`;
+
+    h += '<div class="ind-grid">';
+    for (const c of resto) {
+      const cls   = c.sinal === 'up' ? 'chg-up' : 'chg-dn';
+      const arrow = c.sinal === 'up' ? '▲' : '▼';
+      h += `<div class="ind-card">
+        <div class="ind-name">${c.titulo}</div>
+        <div class="ind-val">${c.valor}</div>
+        <div class="ind-chg ${cls}">${arrow} ${c.variacao}</div>
+        <div class="ind-src">${c.fonte}</div>
+        <div class="ind-note">${c.analise}</div>
+      </div>`;
+    }
+    h += '</div>';
+    el.innerHTML = h;
+    return;
+  }
+
+  const cfg = {
+    macro:    { pillCls: 'pill-macro', pillTxt: 'Macro',      label: 'Macroeconomia' },
+    nacional: { pillCls: 'pill-nac',   pillTxt: 'Nacional',   label: 'Agronegócio nacional' },
+    regional: { pillCls: 'pill-reg',   pillTxt: 'Regional MT', label: 'Norte do Mato Grosso' }
+  }[tipo];
+
+  const noticias = data.noticias || [];
+  if (!noticias.length) { el.innerHTML = errHtml(); return; }
+
+  let h = `<p class="sec-label">${cfg.label}</p>`;
+  for (const n of noticias) {
+    h += `<div class="news-card">
+      <span class="pill ${cfg.pillCls}">${cfg.pillTxt}</span>
+      <div class="news-h">${n.titulo}</div>
+      <div class="news-p">${n.corpo}</div>
+      <div class="news-ft">${n.fonte} &nbsp;·&nbsp; ${n.data}</div>
+    </div>`;
+  }
+  el.innerHTML = h;
+}
+
+function errHtml() {
+  return `<div class="empty"><div class="empty-ico">⚠️</div>
+    <div class="empty-txt">Erro ao carregar.<br>Tente gerar novamente.</div></div>`;
+}
+</script>
+</body>
+</html>
