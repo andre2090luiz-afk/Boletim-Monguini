@@ -380,6 +380,7 @@ body {
       <button onclick="toggleKey()" style="padding:12px;border:1px solid #d0d0d0;border-radius:10px;background:#fff;cursor:pointer;font-size:16px" title="Mostrar/ocultar">👁</button>
     </div>
     <p style="font-size:11px;color:#888;margin-top:5px;line-height:1.4">Cole sua chave Anthropic. Ela fica salva só neste aparelho.</p>
+
   </div>
   <button class="gen-btn" id="gbtn" onclick="gerar()">
     <span class="btn-icon">▶</span>
@@ -448,6 +449,7 @@ body {
 <script>
 // ── API KEY ──────────────────────────────────────────────────────────────────
 function salvarKey(v) { try { localStorage.setItem('mng_key', v); } catch(e){} }
+function salvarProxy(v) { try { localStorage.setItem('mng_proxy', v); } catch(e){} }
 function toggleKey() {
   const inp = document.getElementById('apikey');
   inp.type = inp.type === 'password' ? 'text' : 'password';
@@ -457,10 +459,13 @@ function getKey() {
   if (inp && inp.value.trim()) return inp.value.trim();
   try { return localStorage.getItem('mng_key') || ''; } catch(e){ return ''; }
 }
+function getProxy() {
+  return 'https://boletim-proxy.andr-lui-c.workers.dev/';
+}
 window.addEventListener('DOMContentLoaded', function() {
   try {
     const k = localStorage.getItem('mng_key');
-    if (k) { const inp = document.getElementById('apikey'); if(inp) inp.value = k; }
+    if (k) { const i = document.getElementById('apikey'); if(i) i.value = k; }
   } catch(e){}
 });
 
@@ -548,14 +553,18 @@ async function fetchPg(idx, tipo) {
     const key = getKey();
     if (!key) throw new Error('SEM_CHAVE');
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const proxyUrl = getProxy();
+    const endpoint = proxyUrl || 'https://api.anthropic.com/v1/messages';
+
+    const headers = { 'Content-Type': 'application/json', 'x-api-key': key };
+    if (!proxyUrl) {
+      headers['anthropic-version'] = '2023-06-01';
+      headers['anthropic-dangerous-direct-browser-access'] = 'true';
+    }
+
+    const res = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers,
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1800,
@@ -566,10 +575,7 @@ async function fetchPg(idx, tipo) {
 
     if (!res.ok) {
       let errMsg = 'Erro ' + res.status;
-      try {
-        const errData = await res.json();
-        errMsg = errData?.error?.message || errMsg;
-      } catch(_){}
+      try { const ed = await res.json(); errMsg = ed?.error?.message || errMsg; } catch(_){}
       throw new Error(errMsg);
     }
 
@@ -585,13 +591,15 @@ async function fetchPg(idx, tipo) {
     else if (e.message.includes('401')) msg = 'API Key inválida. Verifique se copiou corretamente.';
     else if (e.message.includes('403')) msg = 'API Key sem permissão. Verifique no console.anthropic.com.';
     else if (e.message.includes('429')) msg = 'Limite de uso atingido. Aguarde alguns minutos.';
-    else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) msg = 'Erro de conexão. Verifique sua internet.';
+    else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('CORS')) {
+      msg = 'Bloqueio de segurança (CORS). Configure o Proxy URL nas configurações abaixo.';
+    }
     else msg = 'Erro: ' + e.message;
 
     document.getElementById('p' + idx).innerHTML =
       `<div class="empty">
         <div class="empty-ico">⚠️</div>
-        <div class="empty-txt" style="color:#b83232;font-weight:500">${msg}</div>
+        <div class="empty-txt" style="color:#b83232;font-weight:500;margin-bottom:8px">${msg}</div>
        </div>`;
   }
 }
